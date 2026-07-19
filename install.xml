@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+  <name>ProBG Special Countdown for OpenCart</name>
+  <code>probg-special-countdown</code>
+  <version>1.0</version>
+  <author>Veselin Totev, ProBG Web Studio</author>
+  <link>https://probg.com</link>
+  <file path="catalog/model/catalog/product.php">
+    <operation>
+      <search><![CDATA[
+			public function getProductSpecials($data = array()) {
+      ]]></search>
+      <add position="before"><![CDATA[
+      /* Start ProBG Special Countdown: */
+        public function getProductSpecialDatesUnix($product_id) {
+          $query = $this->db->query("
+              SELECT date_start, date_end
+              FROM " . DB_PREFIX . "product_special
+              WHERE product_id = '" . (int)$product_id . "'
+                AND customer_group_id = '" . (int)$this->config->get('config_customer_group_id') . "'
+              ORDER BY priority ASC, price ASC
+              LIMIT 1
+          ");
+
+          if ($query->num_rows) {
+            return [
+              'date_start_unix' => $query->row['date_start'] != '0000-00-00'
+                ? strtotime($query->row['date_start'])
+                : null,
+              'date_end_unix' => $query->row['date_end'] != '0000-00-00'
+                ? strtotime($query->row['date_end'])
+                : null
+            ];
+          }
+
+          return false;
+        }
+      /* End ProBG Special Countdown: */
+
+      ]]></add>
+    </operation>
+  </file>
+  <file path="catalog/controller/product/product.php">
+    <operation>
+      <search><![CDATA[
+			if (!is_null($product_info['special']) && (float)$product_info['special'] >= 0) {
+      ]]></search>
+      <add position="before"><![CDATA[
+
+      /* Start ProBG Special Countdown: */
+      $special_dates = $this->model_catalog_product->getProductSpecialDatesUnix($product_id);
+
+      $data['special_active'] = false;
+      $data['special_start']  = null;
+      $data['special_end']    = null;
+
+      if ($special_dates) {
+        $now = time();
+
+        if (
+          (!$special_dates['date_start_unix'] || $special_dates['date_start_unix'] <= $now) &&
+          (!$special_dates['date_end_unix']   || $special_dates['date_end_unix'] >= $now)
+        ) {
+          $this->document->addScript('catalog/view/javascript/flipdown/flipdown.min.js');
+          $this->document->addStyle('catalog/view/javascript/flipdown/flipdown.min.css');
+          $data['special_active'] = true;
+        }
+
+        $data['special_start'] = $special_dates['date_start_unix'];
+        $data['special_end']   = $special_dates['date_end_unix'];
+      }
+      /* End ProBG Special Countdown: */
+
+      ]]></add>
+    </operation>
+  </file>
+  <file path="catalog/language/en-gb/en-gb.php">
+    <operation>
+      <search><![CDATA[
+			// Error
+      ]]></search>
+      <add position="before"><![CDATA[
+      $_['pbg_flip_days']           = 'Days';
+      $_['pbg_flip_hours']          = 'Hours';
+      $_['pbg_flip_minutes']        = 'Minutes';
+      $_['pbg_flip_seconds']        = 'Seconds';
+
+      ]]></add>
+    </operation>
+  </file>
+  <file path="catalog/language/bg-bg/bg-bg.php">
+    <operation>
+      <search><![CDATA[
+			// Error
+      ]]></search>
+      <add position="before"><![CDATA[
+      $_['pbg_flip_days']           = 'Дни';
+      $_['pbg_flip_hours']          = 'Часове';
+      $_['pbg_flip_minutes']        = 'Минути';
+      $_['pbg_flip_seconds']        = 'Секунди';
+
+      ]]></add>
+    </operation>
+  </file>
+</modification>
